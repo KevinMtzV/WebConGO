@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Productos</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>CRUD de Productos</h1>
+
+        <!-- Formulario para crear producto -->
+        <form id="formProducto">
+            <input type="text" id="nombre" placeholder="Nombre" required>
+            <input type="number" step="0.01" id="precio" placeholder="Precio" required>
+            <button type="submit">Agregar Producto</button>
+        </form>
+
+        <!-- Lista de productos -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaProductos"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const tabla = document.getElementById("tablaProductos");
+        const form = document.getElementById("formProducto");
+
+        // Cargar productos desde la API
+        async function cargarProductos() {
+            const resp = await fetch("/productos");
+            const productos = await resp.json();
+            tabla.innerHTML = "";
+            productos.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${p.id}</td>
+                    <td>${p.nombre}</td>
+                    <td>$${p.precio.toFixed(2)}</td>
+                    <td><button onclick="eliminarProducto(${p.id})">Eliminar</button>
+                    <button onclick="editarProducto(${p.id}, '${p.nombre}', ${p.precio})">Editar</button></td>
+                `;
+                tabla.appendChild(tr);
+            });
+        }
+
+        // Crear nuevo producto
+        let editandoId = null; // guarda el ID del producto que se está editando
+
+        // Función que carga los datos en el formulario para editar
+        function editarProducto(id, nombre, precio) {
+            document.getElementById("nombre").value = nombre;
+            document.getElementById("precio").value = precio;
+            editandoId = id;
+            document.querySelector("button[type='submit']").textContent = "Actualizar Producto";
+        }
+
+        // Crear o actualizar producto al enviar el formulario
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById("nombre").value;
+            const precio = parseFloat(document.getElementById("precio").value);
+
+            if (editandoId) {
+                // Actualizar producto
+                await fetch(`/productos/${editandoId}`, {
+                    method: "PUT",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({nombre, precio})
+                });
+                editandoId = null;
+                document.querySelector("button[type='submit']").textContent = "Agregar Producto";
+            } else {
+                // Crear producto
+                await fetch("/productos", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({nombre, precio})
+                });
+            }
+
+            form.reset();
+            cargarProductos();
+        });
+
+        // Eliminar producto
+        async function eliminarProducto(id) {
+            await fetch(`/productos/${id}`, { method: "DELETE" });
+            cargarProductos();
+        }
+
+        // Cargar productos al iniciar
+        cargarProductos();
+    </script>
+</body>
+</html>
